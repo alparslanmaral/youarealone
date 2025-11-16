@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mini Vampire Survivors Clone</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HP ve Level UI -->
+  <div id="hud">
+    <div class="row">
+      <span id="hpLabel">HP: 10 / 10</span>
+      <span id="levelLabel">Level: 1</span>
+      <span id="xpLabel">XP: 0 / 50</span>
+    </div>
+    <div class="row">
+      <span id="attackSpeedLabel">Atk SPD: 1.00x</span>
+      <span id="moveSpeedLabel">Move SPD: 100</span>
+      <span id="projectileLabel">Proj: 1</span>
+      <span id="regenLabel">Regen: 0</span>
+    </div>
+  </div>
+
+  <!-- Level Up Panel -->
+  <div id="levelUpPanel" class="hidden">
+    <h2>Seviye Atladın!</h2>
+    <p>Bir geliştirme seç:</p>
+    <div id="upgradeOptions"></div>
+  </div>
+
+  <!-- Mobil Joystick -->
+  <div id="joystick" class="hidden">
+    <div id="stick"></div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
