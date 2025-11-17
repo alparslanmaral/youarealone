@@ -1,5 +1,8 @@
-// Basit Vampire Survivors benzeri prototip (spawn azaltılmış + soft cap)
-// ================================================================
+// Mini Vampire Survivors-like prototype
+// Keyboard + mobile joystick, trail, tuned enemy spawn
+// Changes:
+// - Removed regen; added +3 Instant Heal (one-time) upgrade
+// - XP curve eased: 35 * level^2
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -11,6 +14,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// HUD
 const hud = {
   hpLabel: document.getElementById('hpLabel'),
   levelLabel: document.getElementById('levelLabel'),
@@ -18,15 +22,17 @@ const hud = {
   attackSpeedLabel: document.getElementById('attackSpeedLabel'),
   moveSpeedLabel: document.getElementById('moveSpeedLabel'),
   projectileLabel: document.getElementById('projectileLabel'),
-  regenLabel: document.getElementById('regenLabel'),
 };
 
+// Panels
 const levelUpPanel = document.getElementById('levelUpPanel');
 const upgradeOptionsDiv = document.getElementById('upgradeOptions');
+
+// Joystick
 const joystick = document.getElementById('joystick');
 const stick = document.getElementById('stick');
 
-// -------------------------------------------------- Player
+// Player
 const player = {
   x: canvas.width / 2,
   y: canvas.height / 2,
@@ -34,40 +40,39 @@ const player = {
   color: '#3ad',
   baseMoveSpeed: 100,
   moveSpeedMultiplier: 1,
+
   maxHP: 10,
   hp: 10,
-  regen: 0,
+
   xp: 0,
   level: 1,
-  xpToNext: 50,
+  xpToNext: 35, // eased curve
   projectilesPerShot: 1,
   baseAttackInterval: 3000,
   attackSpeedMultiplier: 1,
   lastAttackTime: 0,
+
   trail: [],
 };
 
+// Trail settings
 const TRAIL_MAX_POINTS = 24;
 const TRAIL_LIFE = 0.45;
 const TRAIL_MIN_SPACING = 3;
 
+// Enemies & projectiles
 const enemies = [];
 const projectiles = [];
 
-// -------------------------------------------------- Spawn Kontrol
+// Spawn control
 let enemySpawnTimer = 0;
-// Önceki: 1650 -> şimdi biraz daha seyrek
-let enemySpawnInterval = 1850;
+let enemySpawnInterval = 1850; // tuned
 let gameTime = 0;
+// Soft/hard caps
+const SOFT_CAP = 35;
+const HARD_CAP = 55;
 
-// Soft cap ayarları
-const SOFT_CAP = 35;          // bu sayıdan fazla düşman varsa spawn ciddi yavaşlasın
-const HARD_CAP = 55;          // bu sayıyı aşarsa hiç yeni spawn olmasın
-// Ek açıklama:
-// - HARD_CAP tamamen keser.
-// - SOFT_CAP üstü her ekstra düşman için spawn gecikmesine çarpan eklenir.
-
-// -------------------------------------------------- Input
+// Input (Keyboard + Joystick)
 const keyState = Object.create(null);
 const handledCodes = new Set([
   'KeyW','KeyA','KeyS','KeyD',
@@ -137,7 +142,7 @@ function initJoystick() {
 }
 if (hasTouch) initJoystick();
 
-// -------------------------------------------------- Helpers
+// Helpers
 function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);}
 
 function spawnEnemy() {
@@ -161,17 +166,19 @@ function tryLevelUp(){
   if(player.xp>=player.xpToNext){
     player.xp-=player.xpToNext;
     player.level++;
-    player.xpToNext = Math.floor(player.level*player.level*50);
+    // Eased XP curve
+    player.xpToNext = Math.floor(player.level * player.level * 35);
     openUpgradePanel();
   }
 }
 
+// Upgrades (2 options shown each level-up)
 const allUpgrades = [
-  { id:'attackSpeed', label:'+10% saldırı hızı', apply:()=>{player.attackSpeedMultiplier*=1.10;} },
-  { id:'moveSpeed', label:'+10% hareket hızı', apply:()=>{player.moveSpeedMultiplier*=1.10;} },
-  { id:'projectile', label:'+1 projectile', apply:()=>{player.projectilesPerShot+=1;} },
-  { id:'hpPlus', label:'+1 kalıcı hp', apply:()=>{player.maxHP+=1;player.hp+=1;} },
-  { id:'regenPlus', label:'+2 hp yenileme', apply:()=>{player.regen+=2;} },
+  { id:'attackSpeed', label:'+10% attack speed', apply:()=>{player.attackSpeedMultiplier*=1.10;} },
+  { id:'moveSpeed',   label:'+10% movement speed', apply:()=>{player.moveSpeedMultiplier*=1.10;} },
+  { id:'projectile',  label:'+1 projectile', apply:()=>{player.projectilesPerShot+=1;} },
+  { id:'hpPlus',      label:'+1 max HP (permanent)', apply:()=>{player.maxHP+=1; player.hp=Math.min(player.maxHP, player.hp+1);} },
+  { id:'instantHeal', label:'+3 HP instant heal', apply:()=>{player.hp=Math.min(player.maxHP, player.hp+3);} },
 ];
 
 function openUpgradePanel(){
@@ -224,16 +231,15 @@ function fireProjectiles(){
 }
 
 function updateHUD(){
-  hud.hpLabel.textContent=`HP: ${Math.max(0,Math.floor(player.hp))} / ${player.maxHP}`;
-  hud.levelLabel.textContent=`Level: ${player.level}`;
-  hud.xpLabel.textContent=`XP: ${player.xp} / ${player.xpToNext}`;
-  hud.attackSpeedLabel.textContent=`Atk SPD: ${player.attackSpeedMultiplier.toFixed(2)}x`;
-  hud.moveSpeedLabel.textContent=`Move SPD: ${(player.baseMoveSpeed*player.moveSpeedMultiplier).toFixed(0)}`;
-  hud.projectileLabel.textContent=`Proj: ${player.projectilesPerShot}`;
-  hud.regenLabel.textContent=`Regen: ${player.regen}/s`;
+  hud.hpLabel.textContent   = `HP: ${Math.max(0,Math.floor(player.hp))} / ${player.maxHP}`;
+  hud.levelLabel.textContent= `Level: ${player.level}`;
+  hud.xpLabel.textContent   = `XP: ${player.xp} / ${player.xpToNext}`;
+  hud.attackSpeedLabel.textContent = `ATK SPD: ${player.attackSpeedMultiplier.toFixed(2)}x`;
+  hud.moveSpeedLabel.textContent   = `MOVE SPD: ${(player.baseMoveSpeed*player.moveSpeedMultiplier).toFixed(0)}`;
+  hud.projectileLabel.textContent  = `Proj: ${player.projectilesPerShot}`;
 }
 
-// -------------------------------------------------- Trail
+// Trail
 function updatePlayerTrail(now,isMoving){
   if(isMoving){
     const last=player.trail[player.trail.length-1];
@@ -245,7 +251,6 @@ function updatePlayerTrail(now,isMoving){
   while(player.trail.length && player.trail[0].time<cutoff) player.trail.shift();
   while(player.trail.length>TRAIL_MAX_POINTS) player.trail.shift();
 }
-
 function drawPlayerTrail(now){
   for(const pt of player.trail){
     const age=(now-pt.time)/1000;
@@ -262,30 +267,23 @@ function drawPlayerTrail(now){
   }
 }
 
-// -------------------------------------------------- Loop
+// Main loop
 let lastTime=performance.now();
 function gameLoop(now){
   const dt=(now-lastTime)/1000;
   lastTime=now;
   gameTime+=dt;
 
-  // Yeni spawn formülü:
-  // Taban: 1850ms
-  // Azalım: gameTime * 5
-  // Minimum: 900ms
-  // Düşman sayısı arttıkça çarpan: (1 + (enemies.length / 50)) -> yavaş yavaş artar
-  // Soft cap üstünde ekstra gecikme
+  // Spawn tuning (kept from previous version)
   const baseDynamic = Math.max(900, 1850 - gameTime * 5);
-  const populationFactor = 1 + (enemies.length / 50); // 50 düşmanda +100% interval
+  const populationFactor = 1 + (enemies.length / 50);
   let effectiveInterval = baseDynamic * populationFactor;
 
   if (enemies.length > SOFT_CAP) {
-    // Her fazla düşman için ekstra %3 gecikme
     const excess = enemies.length - SOFT_CAP;
     effectiveInterval *= (1 + excess * 0.03);
   }
   if (enemies.length >= HARD_CAP) {
-    // Hard cap: hiç spawn olmasın ama timer sıfırlanmasın (durgunlaşır)
     effectiveInterval = Infinity;
   }
 
@@ -296,7 +294,7 @@ function gameLoop(now){
     spawnEnemy();
   }
 
-  // Girdi
+  // Input
   let inputX=0,inputY=0;
   if(keyState['KeyA']||keyState['ArrowLeft']) inputX-=1;
   if(keyState['KeyD']||keyState['ArrowRight']) inputX+=1;
@@ -304,6 +302,7 @@ function gameLoop(now){
   if(keyState['KeyS']||keyState['ArrowDown']) inputY+=1;
   inputX += joyVector.x;
   inputY += joyVector.y;
+
   const len=Math.hypot(inputX,inputY);
   if(len>0){inputX/=len;inputY/=len;}
 
@@ -316,20 +315,14 @@ function gameLoop(now){
   const moved=Math.hypot(player.x-prevX,player.y-prevY)>0.1;
   updatePlayerTrail(now,moved);
 
-  // Regen
-  if(player.regen>0 && player.hp<player.maxHP){
-    player.hp+=player.regen*dt;
-    if(player.hp>player.maxHP) player.hp=player.maxHP;
-  }
-
-  // Saldırı
+  // Attack
   const attackInterval=player.baseAttackInterval/player.attackSpeedMultiplier;
   if(now-player.lastAttackTime>=attackInterval){
     player.lastAttackTime=now;
     fireProjectiles();
   }
 
-  // Düşman hareketi + temas hasarı
+  // Enemies: move + contact damage
   enemies.forEach(enemy=>{
     const dx=player.x-enemy.x;
     const dy=player.y-enemy.y;
@@ -339,13 +332,14 @@ function gameLoop(now){
       enemy.y+=(dy/d)*enemy.speed*dt;
     }
     if(d<player.radius+enemy.radius){
+      // Contact damage (~5 DPS)
       player.hp -= 1 * dt * 5;
       enemy.x-=(dx/d)*10*dt;
       enemy.y-=(dy/d)*10*dt;
     }
   });
 
-  // Mermiler
+  // Projectiles
   for(let i=projectiles.length-1;i>=0;i--){
     const p=projectiles[i];
     p.x+=p.vx*dt;
@@ -373,18 +367,18 @@ function gameLoop(now){
     }
   }
 
-  // Ölüm
+  // Death
   if(player.hp<=0){
     ctx.fillStyle='rgba(0,0,0,0.6)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle='#f33';
     ctx.font='48px sans-serif';
     ctx.textAlign='center';
-    ctx.fillText('Öldün! Yenilemek için F5.',canvas.width/2,canvas.height/2);
+    ctx.fillText('You Died! Press F5 to restart.',canvas.width/2,canvas.height/2);
     return;
   }
 
-  // Çizim
+  // Render
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawPlayerTrail(now);
 
